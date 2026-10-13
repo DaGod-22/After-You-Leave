@@ -1,0 +1,19 @@
+{
+  "name": "after-you-leave",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AFTER YOU LEAVE — a browser ecosystem simulator where life keeps evolving while you are away.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "test": "node --test tests/sim.test.mjs"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}
