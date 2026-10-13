@@ -154,7 +154,7 @@ function attemptCapture(w, a, prey) {
   a.ac = 2.5; // one lunge per encounter; the hunter then has to find another target
   if (rng.chance(p)) {
     w.killAnimal(prey, 'predation');
-    a.energy = Math.min(1, a.energy + 0.4 + 0.25 * prey.g.size);
+    a.energy = Math.min(1, a.energy + (SPECIES[a.sp].mealValue ?? 0.4) + 0.25 * prey.g.size);
     a.tgtId = null;
     w.recordKill(a.sp);
     const rec = w.S.species[a.sp];

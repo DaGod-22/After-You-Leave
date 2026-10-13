@@ -262,6 +262,8 @@ function handleClick(e) {
   if (!S || app.catchUp) return;
   const tool = ui.tool;
   if (tool === 'inspect') {
+    // a deliberate pick hands the camera back to the player
+    if (engine.orbit.cinematic) { engine.orbit.cinematic = false; ui.toast('Cinematic camera off: you picked a target.'); }
     const id = engine.pickAnimal(e.clientX, e.clientY);
     if (id != null) {
       app.selected = id; app.plantId = null;

@@ -393,9 +393,10 @@ export class UI {
     const body = document.createElement('div');
     body.innerHTML = `<ol>
       <li><b>Look around.</b> Drag to orbit, right-drag or Shift-drag to pan, scroll to zoom, WASD to move, Q/E to turn, R to reset.</li>
-      <li><b>Read a creature.</b> Click any animal. The inspector shows its body, genes, energy and state. Follow keeps the camera on it.</li>
+      <li><b>Read a creature or a plant.</b> Click an animal to read its body, genes, energy and state; Follow keeps the camera on it. Click a plant with no creature under the pointer to read its genes and condition.</li>
       <li><b>Shape the basin.</b> Plant seeds, introduce a founder group (one bank specimen each), open springs, spread mulch, call rain, or change the background temperature.</li>
       <li><b>Let time run.</b> Speed buttons advance the basin: 1 sim-hour takes 20 real seconds at 1×. Pause at any time.</li>
+      <li><b>Frame the view.</b> The View panel holds render quality (it steps down on its own if the frame rate stays low) and a cinematic camera that slowly follows a creature. Dragging takes manual control back.</li>
       <li><b>Leave and return.</b> The basin keeps running while you are away. On return, a field report lists what actually happened, and the journal keeps every event.</li></ol>
       <p class="muted small">Everything you see comes from the simulation. Nothing is scripted, and nothing is saved to a server: worlds stay in this browser.</p>`;
     this.modal({ title: 'First look: how to play', body, narrow: true, actions: [{ label: 'Got it', primary: true, value: 'ok' }], onClose: () => localStorage.setItem('ayl.guide.seen', '1') });

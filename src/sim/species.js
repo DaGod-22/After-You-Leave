@@ -89,7 +89,7 @@ export const SPECIES = {
     id: 'stalker', kind: 'animal', code: 'STK', common: 'Long-legged Stalker', role: 'Predator · ambush hunter',
     blurb: 'A long-legged hunter that tracks grazers by movement. It is fast on open ground but needs a lot of food.',
     diet: ['grazer', 'tessel', 'lumen', 'skimmer'], dietWeights: [1, 1, 0.6, 0.7],
-    speed: 19, metab: 0.016, lifespan: 420, maturity: 0.3, breedCD: 100, litterMax: 2, sense: 14, cap: 16, founders: 8,
+    speed: 19, metab: 0.014, mealValue: 0.55, lifespan: 420, maturity: 0.3, breedCD: 100, litterMax: 2, sense: 14, cap: 16, founders: 8,
     waterLoss: 0.022, tempOpt: 17, tempTol: 10, hueBase: 0.3, hueSpread: 0.5, legs: 4, bodySize: 1.1, legBase: 1.5,
     shellable: false, horns: 0, antennae: 2, tail: 1.1, fins: 0, glow: false, aquatic: false, nocturnal: false, burrower: false,
     mean: { size: 0.5, legLen: 0.75, speed: 0.7, eff: 0.4, heatTol: 0.45, waterNeed: 0.4, camo: 0.5, sense: 0.7, fert: 0.4, life: 0.45, shell: 0.1, hue: 0.4, diet: 0.5 },
