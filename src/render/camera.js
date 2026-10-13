@@ -15,6 +15,7 @@ export class OrbitCam {
     this.pitch = 0.75; this.goalPitch = 0.75;
     this.dist = 90; this.goalDist = 90;
     this.follow = null; // () => {x,y,z} | null
+    this.cinematic = false;
     this.keys = new Set();
     this.drag = null;
     this.moved = 0;
@@ -26,6 +27,7 @@ export class OrbitCam {
     d.addEventListener('pointerdown', (e) => {
       if (e.button !== 0 && e.button !== 2) return;
       this.drag = { x: e.clientX, y: e.clientY, pan: e.button === 2 || e.shiftKey, id: e.pointerId };
+      this.cinematic = false;
       this.moved = 0;
       d.setPointerCapture?.(e.pointerId);
     });
@@ -96,6 +98,11 @@ export class OrbitCam {
     }
     if (k.has('q')) this.goalYaw += dt * 1.4;
     if (k.has('e')) this.goalYaw -= dt * 1.4;
+    if (this.cinematic) {
+      this.goalYaw += dt * 0.09;
+      this.goalPitch += (0.4 - this.goalPitch) * Math.min(1, dt * 0.8);
+      this.goalDist += (24 - this.goalDist) * Math.min(1, dt * 0.6);
+    }
     if (this.follow) {
       const p = this.follow.fn();
       if (p) this.goal.set(p.x, p.y + 1, p.z);

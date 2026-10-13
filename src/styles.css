@@ -123,3 +123,5 @@ canvas.chart { width: 100%; height: 220px; display: block; }
   .bottom { left: 12px; right: 12px; }
   .stat.hide-s { display: none; }
 }
+
+#btnFollow, #btnReset, #btnCine { white-space: nowrap; }

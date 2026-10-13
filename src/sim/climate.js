@@ -1,5 +1,5 @@
 // Weather, humidity and the moisture / nutrient field of the ecological grid.
-import { clamp, smoothstep } from './math.js';
+import { clamp } from './math.js';
 import { CELLS } from './terrain.js';
 import { noteEvent } from './journal.js';
 
@@ -30,7 +30,7 @@ export function stepClimate(w, dt) {
     if (w.rng.chance(p)) {
       const dry = c.lastRainEnd == null ? 999 : t - c.lastRainEnd;
       c.rain = { on: true, intensity: w.rng.range(0.45, 0.9), until: t + w.rng.range(2, 9) };
-      if (dry > 30) noteEvent(w, 'weather', null, `Rain returned after ${Math.round(dry)} hours without it (${c.rain.intensity > 0.7 ? 'heavy' : 'steady'}). Moisture will rise in low ground first.`, { intensity: +c.rain.intensity.toFixed(2) });
+      if (c.lastRainEnd != null && dry > 30) noteEvent(w, 'weather', null, `Rain returned after ${Math.round(dry)} hours without it (${c.rain.intensity > 0.7 ? 'heavy' : 'steady'}). Moisture will rise in low ground first.`, { intensity: +c.rain.intensity.toFixed(2) });
     }
   }
   // Humidity: rain feeds it, dry air and heat draw it down
@@ -83,5 +83,4 @@ export function updateGrid(w, dt) {
     if (w.cellDepth[ci] > 0) continue;
     w.moist[ci] = w.moist[ci] * 0.8 + tmp[ci] * 0.2;
   }
-  void smoothstep;
 }

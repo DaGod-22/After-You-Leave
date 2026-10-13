@@ -1,6 +1,6 @@
 // Animal behaviour: needs-driven decisions (flee, drink, forage, hunt, shelter, mate, rest, burrow)
 // with physiology (energy, hydration, thermal stress, age) and encounter-based predation.
-import { SPECIES, MAX_ANIMALS, ANIMAL_IDS } from './species.js';
+import { SPECIES, ANIMAL_IDS } from './species.js';
 import { animalPhenotype, camoMatch, inheritGenome, genomeDistance, traitKeys } from './genome.js';
 import { clamp, smoothstep } from './math.js';
 import { noteBirth, noteEvent } from './journal.js';
@@ -123,7 +123,6 @@ export function stepAnimals(w, dt) {
     }
     if (a.st === 'rest' || a.st === 'burrow' || a.bur) a.hd += 0; // posture is handled in rendering
   }
-  void MAX_ANIMALS;
 }
 
 function eatPlant(w, a, dt) {
@@ -140,7 +139,6 @@ function eatPlant(w, a, dt) {
   p.size -= bite;
   p.health -= 0.02 * dt;
   a.energy = Math.min(1, a.energy + bite * food * 2.0 * (0.6 + 0.6 * a.g.eff));
-  void spd;
   if (p.size < 0.012) { w.killPlant(p, 'grazed'); a.tgtId = null; } // stubs below this size die; others regrow
   // Satiation: stop foraging once full, so herbivores don't strip the basin
   if (a.energy > 0.92) { a.tk = 0; a.tgtId = null; }
@@ -295,7 +293,6 @@ function decide(w, a, ctx) {
   }
   a.st = 'wander';
   a.wanderTurn = rng.range(-2, 2);
-  void inWater;
 }
 
 function findThreat(w, a) {

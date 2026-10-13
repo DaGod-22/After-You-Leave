@@ -174,7 +174,6 @@ export class World {
     this.runSteps(48, 0.2);
     S.rngState = this.rng.state;
     this.S.lastSeen = { t: this.S.time, counts: this.countsSnapshot() };
-    void rng;
   }
 
   firstGenome(spId) {

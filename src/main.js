@@ -1,7 +1,7 @@
 // Application entry: wires the simulation, the renderer, persistence and the interface together.
 // Live play steps the same rules at 0.02 sim-hour per step; returning after time away runs a bounded catch-up.
 import './styles.css';
-import { Engine } from './render/engine.js';
+import { Engine, QUALITY } from './render/engine.js';
 import { World, seedFromText } from './sim/world.js';
 import { CatchUp, planCatchUp, SIM_HOURS_PER_REAL_SECOND, DT_LIVE } from './sim/offline.js';
 import { stripForSave, exportPayload, validateState } from './sim/serialize.js';
@@ -14,7 +14,7 @@ const engine = new Engine(canvas);
 const app = {
   S: null, world: null, catchUp: null, acc: 0, lastSaveTs: 0, saving: false, pendingSave: false,
   saveState: { ok: true, text: 'Not saved yet' }, selected: null, following: false, rippleNext: 0,
-  storageOk: true,
+  storageOk: true, plantId: null, fps: null, cineT: 0,
 };
 let ui = null;
 
@@ -24,6 +24,8 @@ const randomSeedText = () => `${WORDS[(Math.random() * WORDS.length) | 0]}-${WOR
 function view() {
   return {
     S: app.S, world: app.world, selected: app.selected, following: app.following, saveState: app.saveState,
+    plant: app.plantId != null && app.S ? app.S.plants.find((p) => p.id === app.plantId) || null : null,
+    quality: engine.quality, cinematic: engine.orbit.cinematic, fps: app.fps,
   };
 }
 
@@ -166,6 +168,19 @@ const handlers = {
     engine.orbit.reset();
     ui.showHint('View reset.', 1200);
   },
+  onQuality(q) {
+    engine.setQuality(q, false);
+    try { localStorage.setItem('ayl.quality', q); } catch { /* storage may be blocked */ }
+    ui.toast(`Render quality: ${QUALITY[q].label}.`);
+    ui.update(view());
+  },
+  onCinematic() {
+    const on = !engine.orbit.cinematic;
+    engine.orbit.cinematic = on;
+    if (on) { app.cineT = 0; ui.toast('Cinematic camera: slow orbit that follows a creature. Drag to take control.'); }
+    else ui.toast('Cinematic camera off.');
+    ui.update(view());
+  },
   onJournal() { if (app.S) ui.openJournal(view()); },
   onWorlds() { openWorldsDialog(); },
   create: (name, seed) => createWorld(name, seed),
@@ -248,9 +263,17 @@ function handleClick(e) {
   const tool = ui.tool;
   if (tool === 'inspect') {
     const id = engine.pickAnimal(e.clientX, e.clientY);
-    app.selected = id;
-    if (id == null && app.following) { app.following = false; engine.orbit.setFollow(null); }
-    if (id != null) { ui.showHint('Follow keeps the camera on it. Press Follow in the inspector.', 2200); }
+    if (id != null) {
+      app.selected = id; app.plantId = null;
+      ui.showHint('Follow keeps the camera on it. Press Follow in the inspector.', 2200);
+    } else {
+      // no creature under the pointer: take the nearest plant within reach of the ground point
+      const g = engine.pickGround(e.clientX, e.clientY);
+      let best = null, bd = 2.4 * 2.4;
+      if (g) for (const p of S.plants) { const dx = p.x - g.x, dz = p.z - g.z, d = dx * dx + dz * dz; if (d < bd) { bd = d; best = p; } }
+      app.selected = null; app.plantId = best ? best.id : null;
+      if (app.following) { app.following = false; engine.orbit.setFollow(null); }
+    }
     ui.update(view());
     return;
   }
@@ -278,11 +301,28 @@ function handleClick(e) {
   ui.update(view());
 }
 
+/** Cinematic mode: keep the camera on a living creature, switching every 25 seconds or when it dies. */
+function cinematicTarget(dt) {
+  app.cineT -= dt;
+  const alive = app.following && app.selected != null && engine.life?.render.has(app.selected);
+  if (alive && app.cineT > 0) return;
+  const list = app.S.animals;
+  if (!list.length) { engine.orbit.setFollow(null); app.following = false; return; }
+  const a = list[(Math.random() * list.length) | 0];
+  app.selected = a.id; app.plantId = null; app.following = true; app.cineT = 25;
+  const id = a.id;
+  engine.orbit.setFollow(() => {
+    const rs = engine.life?.render.get(id);
+    if (!rs || !engine.world) return null;
+    return { x: rs.x, y: engine.world.terrain.heightAt(rs.x, rs.z), z: rs.z };
+  });
+}
+
 let lastTs = performance.now();
 let uiTimer = 0;
 let frameNo = 0;
 function loop(ts) {
-  const dt = Math.min(0.1, Math.max(0, (ts - lastTs) / 1000));
+  const dt = Math.min(0.25, Math.max(0, (ts - lastTs) / 1000));
   lastTs = ts;
   frameNo++;
   const S = app.S;
@@ -314,7 +354,9 @@ function loop(ts) {
       engine.terrainView.addRipple(engine.clock, 0.5 + Math.random() * 0.7);
       app.rippleNext = engine.clock + 0.12 + Math.random() * 0.25;
     }
-    engine.render(S, frameNo, dt);
+    const fps = engine.render(S, frameNo, dt);
+    if (fps != null) app.fps = Math.round(fps);
+    if (engine.orbit.cinematic && !app.catchUp) cinematicTarget(dt);
     if (app.following && !engine.orbit.follow) app.following = false;
   }
   if (ts - uiTimer > 250) { uiTimer = ts; if (app.S) ui.update(view()); }
@@ -324,6 +366,10 @@ function loop(ts) {
 
 function boot() {
   ui = new UI(uiRoot, handlers);
+  engine.onQuality = (q) => ui?.toast(`Lowered render quality to ${QUALITY[q].label} to keep the view smooth.`, 'bad');
+  let savedQ = 'high';
+  try { savedQ = localStorage.getItem('ayl.quality') || 'high'; } catch { /* default */ }
+  engine.setQuality(QUALITY[savedQ] ? savedQ : 'high', false);
   engine.orbit.onClickCandidate = handleClick;
   window.addEventListener('keydown', (e) => {
     const tag = e.target?.tagName;

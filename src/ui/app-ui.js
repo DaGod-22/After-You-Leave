@@ -1,7 +1,7 @@
 // All HTML interface: HUD, tool panel, species list, inspector, journal, field report, worlds manager,
 // confirmations and first-time guidance. Every number shown is read from simulation state.
 import { SPECIES, PLANT_IDS, ANIMAL_IDS, INTRODUCABLE, TRAIT_LABELS, ANIMAL_TRAITS, PLANT_TRAITS } from '../sim/species.js';
-import { pigment } from '../sim/genome.js';
+import { pigment, plantPhenotype } from '../sim/genome.js';
 import { fmtT, EVENT_TYPES } from '../sim/journal.js';
 import { eventLabel } from '../sim/offline.js';
 
@@ -85,6 +85,15 @@ export class UI {
           <button id="btnFollow" class="grow">Follow selected</button>
           <button id="btnReset" class="grow">Reset view</button>
         </div>
+        <div class="section">
+          <h2>View</h2>
+          <div class="row small">
+            <label class="grow" for="qual">Render quality</label>
+            <select id="qual"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select>
+          </div>
+          <div class="row small" style="margin-top:6px"><button id="btnCine" class="grow" aria-pressed="false">Cinematic camera: off</button></div>
+          <p class="muted small" id="qualNote"></p>
+        </div>
         <p class="muted" style="margin-top:8px">Drag: orbit · Right-drag or Shift-drag: pan · Wheel: zoom · WASD: move · Q/E: turn · R: reset</p>
       </aside>
 
@@ -105,6 +114,7 @@ export class UI {
       hzDir: $('#hzDir', this.root), hzNote: $('#hzNote', this.root), bankNote: $('#bankNote', this.root),
       progress: $('#progress', this.root), modalRoot: $('#modalRoot', this.root), toasts: $('#toasts', this.root),
       btnRain: $('#btnRain', this.root), btnFollow: $('#btnFollow', this.root), worlds: $('#btnWorlds', this.root),
+      qual: $('#qual', this.root), btnCine: $('#btnCine', this.root), qualNote: $('#qualNote', this.root),
     };
     this.root.querySelectorAll('[data-speed]').forEach((b) => b.addEventListener('click', () => this.h.onSpeed(+b.dataset.speed)));
     this.root.querySelectorAll('[data-tool]').forEach((b) => b.addEventListener('click', () => this.setTool(b.dataset.tool)));
@@ -114,6 +124,8 @@ export class UI {
     $('#hzApply', this.root).addEventListener('click', () => this.h.onHazard({ sp: this.$.hzSp.value, trait: this.$.hzTrait.value, dir: this.$.hzDir.value }));
     $('#btnFollow', this.root).addEventListener('click', () => this.h.onFollow());
     $('#btnReset', this.root).addEventListener('click', () => this.h.onReset());
+    this.$.qual.addEventListener('change', () => this.h.onQuality(this.$.qual.value));
+    this.$.btnCine.addEventListener('click', () => this.h.onCinematic());
     $('#btnJournal', this.root).addEventListener('click', () => this.h.onJournal());
     $('#btnHelp', this.root).addEventListener('click', () => this.showGuide(true));
     this.$.worlds.addEventListener('click', () => this.h.onWorlds());
@@ -227,6 +239,27 @@ export class UI {
     const el = this.$.inspector;
     this.$.btnFollow.textContent = v.following ? 'Stop following' : 'Follow selected';
     this.$.btnFollow.disabled = !selected;
+    if (this.$.qual.value !== v.quality) this.$.qual.value = v.quality;
+    this.$.qualNote.textContent = v.fps ? `Frame rate about ${v.fps} fps. Quality steps down automatically if it stays low.` : '';
+    this.$.btnCine.textContent = `Cinematic camera: ${v.cinematic ? 'on' : 'off'}`;
+    this.$.btnCine.setAttribute('aria-pressed', String(!!v.cinematic));
+    if (!selected && v.plant) {
+      const p = v.plant;
+      const sp = SPECIES[p.sp];
+      const ph = plantPhenotype(p.sp, p.g);
+      const bar = (label, val, cls = '') => `<div class="trait"><span>${esc(label)}</span><span style="text-align:right">${pct(val)}</span><div class="bar ${cls}"><i style="width:${pct(val)}"></i></div></div>`;
+      const genes = PLANT_TRAITS.map((k) => bar(TRAIT_LABELS[k] || k, p.g[k] ?? 0)).join('');
+      el.innerHTML = `
+        <h2>Inspector · plant</h2>
+        <h3><span class="dot" style="background:${colourOf(p.sp)}"></span>${esc(sp.common)}</h3>
+        <p class="muted small">${esc(sp.role)} · ${p.parentId ? 'offspring' : 'founder or seeded'}</p>
+        <div style="margin-top:8px">${bar('Health', p.health, 'rust')}${bar('Size', p.size, 'amber')}</div>
+        <p class="small muted">About ${ph.height.toFixed(2)} units tall · ${ph.leaves} leaves · grows best where moisture is above ${pct(ph.moistNeed)}</p>
+        <div class="section" style="margin-top:8px"><h2>Genes</h2>${genes}</div>
+        <p class="muted small" style="margin-top:8px">${esc(sp.blurb)}</p>`;
+      el.dataset.key = 'p' + p.id;
+      return;
+    }
     if (!selected) { el.innerHTML = `<h2>Inspector</h2><p class="muted">Select a creature in the basin, or a species below, to read its body, genes and condition.</p>`; el.dataset.key = ''; return; }
     const a = S.animals.find((q) => q.id === selected);
     if (!a) {
@@ -383,14 +416,15 @@ export class UI {
       }).join('');
     const ev = (r.events || []).slice(-60).reverse();
     const cl = r.climate || {};
+    const climLine = cl.tempMin != null ? `Temperature ${cl.tempMin.toFixed(1)}–${cl.tempMax.toFixed(1)}°C · humidity ${Math.round(cl.humMin * 100)}–${Math.round(cl.humMax * 100)}% · rain for about ${cl.rainHours ?? 0} h` : 'No climate samples were recorded in this period (samples are taken every 2 sim-hours).';
     const span = r.simHours;
     const none = !rows && !ev.length;
     const body = document.createElement('div');
     body.innerHTML = `
       <p>You were away for <b>${fmtDur(r.elapsedSec)}</b>. The basin advanced <b>${span.toFixed(1)} sim-hours</b> (${(span / 24).toFixed(2)} days) using the same rules as live play.</p>
       ${r.truncated ? `<p class="small" style="color:var(--amber)">Catch-up is capped at 240 sim-hours per return. Of the ${r.wantedHours.toFixed(0)} sim-hours that elapsed, only the first 240 were simulated; the rest were not.</p>` : ''}
-      <p class="muted small">${esc(r.approximation)} Steps are ${(r.dt * 60).toFixed(0)} minutes long; live play uses 1.2-minute steps.</p>
-      <div class="row small muted" style="margin:6px 0 10px">Temperature ${cl.tempMin != null ? cl.tempMin.toFixed(1) + '–' + cl.tempMax.toFixed(1) + '°C' : '–'} · humidity ${cl.humMin != null ? Math.round(cl.humMin * 100) + '–' + Math.round(cl.humMax * 100) + '%' : '–'} · rain for about ${cl.rainHours ?? 0} h</div>
+      <p class="muted small">${esc(r.approximation)} Live play uses 1.2-minute steps.</p>
+      <div class="small muted" style="margin:6px 0 10px">${climLine}</div>
       ${none ? '<p>Nothing measurable changed in the basin during this time.</p>' : `
       <div style="overflow:auto"><table class="table"><thead><tr><th>Species</th><th>Living start → end</th><th>Range</th><th>Births</th><th>Deaths</th><th>Kills</th></tr></thead><tbody>${rows}</tbody></table></div>`}
       <h3 style="margin-top:14px">Events in this period</h3>
@@ -478,6 +512,7 @@ export class UI {
     const el = modal.el;
     const form = $('#wNewForm', el);
     $('#wNew', el).addEventListener('click', () => form.classList.toggle('hidden'));
+    $('#wName', el).addEventListener('focus', (e) => e.target.select());
     $('#wCancel', el).addEventListener('click', () => form.classList.add('hidden'));
     $('#wCreate', el).addEventListener('click', () => {
       const name = $('#wName', el).value.trim() || 'Untitled basin';

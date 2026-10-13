@@ -1,7 +1,8 @@
 // Terrain mesh, pond water (3D shoreline from a per-vertex depth attribute) and static decor.
 import * as THREE from 'three';
-import { WORLD_SIZE, TERRAIN_RES, CELLS, CELL_SIZE, WATER_LEVEL } from '../sim/terrain.js';
+import { WORLD_SIZE, TERRAIN_RES, CELLS, WATER_LEVEL } from '../sim/terrain.js';
 import { GEOMS, PartPool } from './parts.js';
+import { makeDetailNormalMap } from './textures.js';
 
 const HALF = WORLD_SIZE / 2;
 const SP = WORLD_SIZE / (TERRAIN_RES - 1);
@@ -82,10 +83,13 @@ export class TerrainView {
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     this.colAttr = new THREE.BufferAttribute(new Float32Array(N * 3), 3);
     g.setAttribute('color', this.colAttr);
+    const uv = new Float32Array(N * 2);
+    for (let k = 0; k < N; k++) { uv[k * 2] = pos[k * 3] / 10; uv[k * 2 + 1] = pos[k * 3 + 2] / 10; }
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
     g.setIndex(idx);
     g.computeVertexNormals();
     this.geom = g;
-    const tm = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.93, metalness: 0 });
+    const tm = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.93, metalness: 0, normalMap: makeDetailNormalMap(256, 5), normalScale: new THREE.Vector2(0.6, 0.6) });
     tm.onBeforeCompile = (sh) => {
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWp;')
         .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWp = (modelMatrix * vec4(transformed, 1.0)).xyz;');
@@ -273,9 +277,9 @@ export class TerrainView {
     this.water.material.uniforms = u;
   }
 
-  addRipple(t, strength = 1) {
-    if (!this.pondPts.length) return;
-    const [x, z] = this.pondPts[(Math.random() * this.pondPts.length) | 0];
+  addRipple(t, strength = 1, x0 = null, z0 = null) {
+    if (!this.pondPts.length && x0 == null) return;
+    const [x, z] = x0 != null ? [x0, z0] : this.pondPts[(Math.random() * this.pondPts.length) | 0];
     const r = this.waterUniforms.uRip.value[this.ripIdx];
     r.set(x, z, t, strength);
     this.ripIdx = (this.ripIdx + 1) % 16;

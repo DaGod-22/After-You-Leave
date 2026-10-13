@@ -63,7 +63,6 @@ export function noteBirth(w, child, parent, mate, lin) {
       lin,
     );
   }
-  void mate;
 }
 
 export function fmtT(t) {
@@ -273,4 +272,3 @@ function pigmentName(v) {
   if (v < 0.75) return 'jade';
   return 'deep teal';
 }
-void pigment;

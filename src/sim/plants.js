@@ -1,7 +1,7 @@
 // Plant population: logistic growth limited by moisture, temperature, shade, nutrients and crowding.
 // Plants reproduce by seed dispersal; seeds may fail on unsuitable ground.
 import { SPECIES } from './species.js';
-import { plantPhenotype, inheritGenome } from './genome.js';
+import { inheritGenome } from './genome.js';
 import { clamp, smoothstep } from './math.js';
 import { noteBirth } from './journal.js';
 
@@ -75,5 +75,4 @@ export function stepPlants(w, dt) {
       }
     }
   }
-  void plantPhenotype;
 }

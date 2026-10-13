@@ -44,6 +44,10 @@ export class Weather {
     this.mp[i * 3 + 1] = 0.5 + Math.random() * 14;
     this.mp[i * 3 + 2] = (Math.random() - 0.5) * 140;
   }
+  /** Share of raindrops drawn (quality setting). */
+  setDensity(f) {
+    this.lines.geometry.setDrawRange(0, Math.round(this.n * 2 * f));
+  }
   update(dt, t, rain, daylight, center) {
     this.level += (rain - this.level) * Math.min(1, dt * 2);
     const L = this.level;
